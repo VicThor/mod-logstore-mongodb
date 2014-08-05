@@ -96,6 +96,10 @@ class LiveStatusLogStoreMongoDB(BaseModule):
         self.plugins = []
         # mongodb://host1,host2,host3/?safe=true;w=2;wtimeoutMS=2000
         self.mongodb_uri = getattr(modconf, 'mongodb_uri', None)
+        self.database = getattr(modconf, 'database', 'logs')
+        self.collection = getattr(modconf, 'collection', 'logs')
+        self.username = getattr(modconf, 'username', '')
+        self.password = getattr(modconf, 'password', '')		
         self.replica_set = getattr(modconf, 'replica_set', None)
         if self.replica_set and not ReplicaSetConnection:
             logger.error('[LogStoreMongoDB] Can not initialize LogStoreMongoDB module with '
@@ -103,8 +107,7 @@ class LiveStatusLogStoreMongoDB(BaseModule):
                          'Please install it with a 2.x+ version from '
                          'https://github.com/mongodb/mongo-python-driver/downloads')
             return None
-        self.database = getattr(modconf, 'database', 'logs')
-        self.collection = getattr(modconf, 'collection', 'logs')
+
         self.use_aggressive_sql = True
         self.mongodb_fsync = to_bool(getattr(modconf, 'mongodb_fsync', "True"))
         max_logs_age = getattr(modconf, 'max_logs_age', '365')
@@ -152,6 +155,10 @@ class LiveStatusLogStoreMongoDB(BaseModule):
                 else:
                     self.conn = pymongo.Connection(self.mongodb_uri)
             self.db = self.conn[self.database]
+			
+            if self.username != '' and self.password != '':
+                self.db.authenticate(self.username, self.password)			
+			
             self.db[self.collection].ensure_index([('host_name', pymongo.ASCENDING), ('time', pymongo.ASCENDING), ('lineno', pymongo.ASCENDING)], name='logs_idx')
             self.db[self.collection].ensure_index([('time', pymongo.ASCENDING), ('lineno', pymongo.ASCENDING)], name='time_1_lineno_1')
             if self.replica_set:
